@@ -16,7 +16,9 @@ with col1:
     st.image("https://plazareal.co.cr/wp-content/uploads/2018/05/Logo-TEC-Pagina-Interna.png", width=100)
 with col2:
     st.title("Herramienta de Análisis de Suelos")
-    st.caption("Proyecto Final - ITCR")
+    st.caption("Proyecto Mecánica de Suelos - ITCR")
+with col3:
+    st.caption("Armando-Jimena-Luis Esteban-Ricardo-Gabriel)     
 
 # Menú de pestañas
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
