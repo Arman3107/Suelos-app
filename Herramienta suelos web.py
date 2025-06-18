@@ -1,8 +1,7 @@
 import streamlit as st
 import math
 import matplotlib.pyplot as plt
-from PIL import Image
-import io
+import numpy as np
 
 # Configuración de la página
 st.set_page_config(
@@ -21,7 +20,7 @@ with col2:
 
 # Menú de pestañas
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "📐 Carga Circular", 
+    "📐 Circular", 
     "🟦 Rectangular", 
     "• Puntual", 
     "📏 Lineal", 
@@ -30,17 +29,27 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📉 Consolidación"
 ])
 
+# ========== FUNCIONES COMPARTIDAS ==========
+def plot_variation(x, y, x_label, y_label, title):
+    fig, ax = plt.subplots()
+    ax.plot(x, y, 'b-', linewidth=2)
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.grid(True)
+    st.pyplot(fig)
+
 # ========== PESTAÑA CARGA CIRCULAR ==========
 with tab1:
     st.header("Carga Circular")
     col1, col2 = st.columns(2)
     
     with col1:
-        R = st.number_input("Radio R (m)", value=5.0, min_value=0.1)
-        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1)
-        q = st.number_input("Carga q (kPa)", value=100.0)
-        E = st.number_input("Módulo Elasticidad E (kPa)", value=15000.0)
-        v = st.number_input("Coeficiente Poisson ν", value=0.25, min_value=0.0, max_value=0.5, step=0.01)
+        R = st.number_input("Radio R (m)", value=5.0, min_value=0.1, key="circ_R")
+        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="circ_z")
+        q = st.number_input("Carga q (kPa)", value=100.0, key="circ_q")
+        E = st.number_input("Módulo Elasticidad E (kPa)", value=15000.0, key="circ_E")
+        v = st.number_input("Coeficiente Poisson ν", value=0.25, min_value=0.0, max_value=0.5, step=0.01, key="circ_v")
         
         if st.button("Calcular", key="calc_circular"):
             Iz = (1 - 1/((1 + (R/z)**2)**1.5))**2
@@ -49,23 +58,178 @@ with tab1:
             
             st.success(f"""
             **RESULTADOS:**  
-            Factor de influencia (Iz): `{Iz:.4f}`  
-            Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
-            Asentamiento estimado: `{asiento:.2f} mm`
+            • Factor de influencia (Iz): `{Iz:.4f}`  
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
+            • Asentamiento estimado: `{asiento:.2f} mm`
             """)
     
     with col2:
-        # Gráfico interactivo
-        profundidades = [i/10 for i in range(1, 101)]
-        factores = [(1 - 1/((1 + (R/z)**2)**1.5))**2 for z in profundidades]
+        if 'calc_circular' in st.session_state:
+            profundidades = np.linspace(0.1, 3*z, 50)
+            factores = [(1 - 1/((1 + (R/z)**2)**1.5))**2 for z in profundidades]
+            plot_variation(profundidades, factores, "Profundidad z (m)", "Factor de Influencia Iz", 
+                          "Variación del Factor con la Profundidad")
+
+# ========== PESTAÑA CARGA RECTANGULAR ==========
+with tab2:
+    st.header("Carga Rectangular")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
+        L = st.number_input("Largo L (m)", value=3.0, min_value=0.1, key="rect_L")
+        z = st.number_input("Profundidad z (m)", value=1.0, min_value=0.1, key="rect_z")
+        q = st.number_input("Carga q (kPa)", value=120.0, key="rect_q")
         
-        fig, ax = plt.subplots()
-        ax.plot(profundidades, factores, 'b-', linewidth=2)
-        ax.set_title("Variación del Factor de Influencia con la Profundidad")
-        ax.set_xlabel("Profundidad z (m)")
-        ax.set_ylabel("Factor de Influencia Iz")
-        ax.grid(True)
-        st.pyplot(fig)
+        if st.button("Calcular", key="calc_rect"):
+            m = B/z
+            n = L/z
+            
+            term1 = (2 * m * n * math.sqrt(1 + m**2 + n**2)) / ((1 + m**2 + n**2 + m**2 * n**2) * (1 + m**2 + n**2))
+            term2 = math.atan2((2 * m * n * math.sqrt(1 + m**2 + n**2)), (1 + m**2 + n**2 - m**2 * n**2))
+            Iz = (term1 + term2) / (2 * math.pi)
+            sigma_z = q * Iz
+            
+            st.success(f"""
+            **RESULTADOS:**  
+            • Relación m (B/z): `{m:.2f}`  
+            • Relación n (L/z): `{n:.2f}`  
+            • Factor de influencia (Iz): `{Iz:.4f}`  
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`
+            """)
+    
+    with col2:
+        if 'calc_rect' in st.session_state:
+            z_values = np.linspace(0.1, 3*max(B,L), 50)
+            iz_values = []
+            for zi in z_values:
+                mi = B/zi
+                ni = L/zi
+                term1i = (2 * mi * ni * math.sqrt(1 + mi**2 + ni**2)) / ((1 + mi**2 + ni**2 + mi**2 * ni**2) * (1 + mi**2 + ni**2))
+                term2i = math.atan2((2 * mi * ni * math.sqrt(1 + mi**2 + ni**2)), (1 + mi**2 + ni**2 - mi**2 * ni**2))
+                iz_values.append((term1i + term2i) / (2 * math.pi))
+            
+            plot_variation(z_values, iz_values, "Profundidad z (m)", "Factor de Influencia Iz", 
+                          "Variación del Factor con la Profundidad")
+
+# ========== PESTAÑA CARGA PUNTUAL ==========
+with tab3:
+    st.header("Carga Puntual (Boussinesq)")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        P = st.number_input("Carga P (kN)", value=1000.0, min_value=0.1, key="punt_P")
+        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="punt_z")
+        r = st.number_input("Distancia radial r (m)", value=1.0, min_value=0.0, key="punt_r")
+        
+        if st.button("Calcular", key="calc_punt"):
+            sigma_z = (3 * P * z**3) / (2 * math.pi * (r**2 + z**2)**2.5)
+            
+            st.success(f"""
+            **RESULTADOS:**  
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
+            • Relación r/z: `{r/z:.2f}`
+            """)
+    
+    with col2:
+        if 'calc_punt' in st.session_state:
+            ratios = np.linspace(0, 2, 50)
+            factores = (3 / (2 * math.pi)) / (ratios**2 + 1)**2.5
+            
+            fig, ax = plt.subplots()
+            ax.plot(ratios, factores, 'b-', linewidth=2)
+            ax.axvline(x=r/z, color='r', linestyle='--')
+            ax.set_title("Distribución de Esfuerzos (Boussinesq)")
+            ax.set_xlabel("Relación r/z")
+            ax.set_ylabel("σz / (P/z²)")
+            ax.grid(True)
+            st.pyplot(fig)
+
+# ========== PESTAÑA CARGA LINEAL ==========
+with tab4:
+    st.header("Carga Lineal")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        q = st.number_input("Carga q (kN/m)", value=50.0, min_value=0.1, key="lin_q")
+        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="lin_z")
+        x = st.number_input("Distancia x (m)", value=1.0, key="lin_x")
+        
+        if st.button("Calcular", key="calc_lin"):
+            sigma_z = (2 * q * z**3) / (math.pi * (x**2 + z**2)**2)
+            
+            st.success(f"""
+            **RESULTADOS:**  
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
+            • Relación x/z: `{x/z:.2f}`
+            """)
+    
+    with col2:
+        if 'calc_lin' in st.session_state:
+            distancias = np.linspace(-3*z, 3*z, 100)
+            esfuerzos = [(2 * q * z**3) / (math.pi * (x**2 + z**2)**2) for x in distancias]
+            
+            fig, ax = plt.subplots()
+            ax.plot(distancias, esfuerzos, 'b-', linewidth=2)
+            ax.axvline(x=x, color='r', linestyle='--')
+            ax.set_title("Distribución de Esfuerzos (Carga Lineal)")
+            ax.set_xlabel("Distancia x (m)")
+            ax.set_ylabel("Esfuerzo σz (kPa)")
+            ax.grid(True)
+            st.pyplot(fig)
+
+# ========== PESTAÑA CARGA TRAPEZOIDAL ==========
+with tab5:
+    st.header("Carga Trapezoidal (Carga en faja)")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        q1 = st.number_input("Carga q1 (kPa)", value=100.0, min_value=0.1, key="trap_q1")
+        q2 = st.number_input("Carga q2 (kPa)", value=150.0, min_value=0.1, key="trap_q2")
+        B = st.number_input("Ancho B (m)", value=3.0, min_value=0.1, key="trap_B")
+        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="trap_z")
+        x = st.number_input("Distancia x (m)", value=1.5, key="trap_x")
+        
+        if st.button("Calcular", key="calc_trap"):
+            # Solución aproximada para carga trapezoidal
+            q_avg = (q1 + q2) / 2
+            sigma_z = q_avg * (1 - 1/(1 + (B/z)**2))
+            
+            st.success(f"""
+            **RESULTADOS (aproximados):**  
+            • Carga promedio: `{q_avg:.2f} kPa`  
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`
+            """)
+    
+    with col2:
+        if 'calc_trap' in st.session_state:
+            x_vals = np.linspace(-2*B, 2*B, 100)
+            z_vals = []
+            for xi in x_vals:
+                if -B/2 <= xi <= B/2:
+                    q = q1 + (q2 - q1) * (xi + B/2)/B
+                else:
+                    q = 0
+                z_vals.append(q * (1 - 1/(1 + (B/z)**2)))
+            
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+            
+            # Gráfico superior: Distribución de carga
+            ax1.plot(x_vals, [q1 + (q2 - q1) * (xi + B/2)/B if -B/2 <= xi <= B/2 else 0 for xi in x_vals], 'r-')
+            ax1.set_title("Distribución de Carga Trapezoidal")
+            ax1.set_xlabel("Distancia x (m)")
+            ax1.set_ylabel("Carga q (kPa)")
+            ax1.grid(True)
+            
+            # Gráfico inferior: Distribución de esfuerzos
+            ax2.plot(x_vals, z_vals, 'b-')
+            ax2.set_title("Distribución de Esfuerzos Verticales")
+            ax2.set_xlabel("Distancia x (m)")
+            ax2.set_ylabel("Esfuerzo σz (kPa)")
+            ax2.grid(True)
+            
+            plt.tight_layout()
+            st.pyplot(fig)
 
 # ========== PESTAÑA ESFUERZOS ========== 
 with tab6:
@@ -74,8 +238,8 @@ with tab6:
     # Configuración inicial
     col1, col2 = st.columns(2)
     with col1:
-        nf = st.number_input("Nivel Freático (m)", value=2.0, min_value=0.0)
-        unidad_gamma = st.selectbox("Unidad peso específico", ["kN/m³", "kg/m³"])
+        nf = st.number_input("Nivel Freático (m)", value=2.0, min_value=0.0, key="nf")
+        unidad_gamma = st.selectbox("Unidad peso específico", ["kN/m³", "kg/m³"], key="unidad_gamma")
     
     # Lista para almacenar estratos
     if 'estratos' not in st.session_state:
@@ -112,7 +276,7 @@ with tab6:
             st.rerun()
     
     # Cálculo y resultados
-    if st.button("📊 Calcular Esfuerzos"):
+    if st.button("📊 Calcular Esfuerzos", key="calc_esf"):
         profundidad_acum = 0
         esfuerzo_total = 0
         resultados = []
@@ -186,11 +350,11 @@ with tab7:
     
     col1, col2 = st.columns(2)
     with col1:
-        h = st.number_input("Altura de drenaje (m)", value=5.0, min_value=0.1)
-        cv = st.number_input("Coeficiente consolidación Cv (m²/s)", value=1e-7, format="%e")
-        u = st.slider("Grado consolidación U (%)", 1, 99, 50)
+        h = st.number_input("Altura de drenaje (m)", value=5.0, min_value=0.1, key="cons_h")
+        cv = st.number_input("Coeficiente consolidación Cv (m²/s)", value=1e-7, format="%e", key="cons_cv")
+        u = st.slider("Grado consolidación U (%)", 1, 99, 50, key="cons_u")
     
-    if st.button("⏱️ Calcular Tiempo"):
+    if st.button("⏱️ Calcular Tiempo", key="calc_cons"):
         if u < 60:
             tv = (math.pi/4) * (u/100)**2
         else:
@@ -210,9 +374,9 @@ with tab7:
         
         st.success(f"""
         **RESULTADOS:**  
-        - Factor tiempo (Tv): `{tv:.4f}`  
-        - Tiempo requerido: `{tiempo}`  
-        - Equivalente: `{t:.2f} segundos`
+        • Factor tiempo (Tv): `{tv:.4f}`  
+        • Tiempo requerido: `{tiempo}`  
+        • Equivalente: `{t:.2f} segundos`
         """)
     
     with col2:
@@ -250,4 +414,4 @@ st.sidebar.markdown("""
 """)
 
 st.sidebar.divider()
-st.sidebar.caption("Proyecto desarrollado por [Tu Nombre] para ITCR")
+st.sidebar.caption("Proyecto desarrollado por Armando Caldeón (2023172381) para ITCR")
