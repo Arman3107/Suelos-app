@@ -13,7 +13,7 @@ st.set_page_config(
 # Logo y título
 col1, col2 = st.columns([1, 4])
 with col1:
-    st.image("https://www.itcr.ac.cr/wp-content/themes/portal-itcr/images/logo.png", width=100)
+    st.image("https://plazareal.co.cr/wp-content/uploads/2018/05/Logo-TEC-Pagina-Interna.png", width=100)
 with col2:
     st.title("Herramienta de Análisis de Suelos")
     st.caption("Proyecto Final - ITCR")
