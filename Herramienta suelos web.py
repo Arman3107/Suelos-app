@@ -114,7 +114,7 @@ with tab2:
 
 # ========== PESTAÑA CARGA PUNTUAL ==========
 with tab3:
-    st.header("Carga Puntual (Boussinesq)")
+    st.header("Carga Puntual")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -180,7 +180,7 @@ with tab4:
 
 # ========== PESTAÑA CARGA TRAPEZOIDAL ==========
 with tab5:
-    st.header("Carga Trapezoidal (Carga en faja)")
+    st.header("Carga Trapezoidal")
     col1, col2 = st.columns(2)
     
     with col1:
