@@ -17,7 +17,7 @@ with col1:
 with col2:
     st.title("Herramienta de Análisis de Suelos")
     st.caption("Proyecto Mecánica de Suelos - ITCR")
-    st.caption("Armando-Jimena-Luis Esteban-Ricardo-Gabriel)     
+    st.caption("Armando-Jimena-Luis Esteban-Ricardo-Gabriel")     
 
 # Menú de pestañas
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
