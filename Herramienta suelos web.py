@@ -17,7 +17,6 @@ with col1:
 with col2:
     st.title("Herramienta de Análisis de Suelos")
     st.caption("Proyecto Mecánica de Suelos - ITCR")
-with col3:
     st.caption("Armando-Jimena-Luis Esteban-Ricardo-Gabriel)     
 
 # Menú de pestañas
