@@ -351,7 +351,7 @@ with tab7:
     
     col1, col2 = st.columns(2)
     with col1:
-        h = st.number_input("Altura de drenaje (m)", value=5.0, min_value=0.1, key="cons_h")
+        h = st.number_input("Altura de drenaje (m)", value=5.0, min_value=0.0001, key="cons_h")
         cv = st.number_input("Coeficiente consolidación Cv (m²/s)", value=1e-7, format="%e", key="cons_cv")
         u = st.slider("Grado consolidación U (%)", 1, 99, 50, key="cons_u")
     
