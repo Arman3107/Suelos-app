@@ -121,7 +121,7 @@ with tab2:
     col1, col2 = st.columns(2)
     
     with col1:
-        # Inputs with default values from your Excel
+        # Inputs con valores del Excel
         B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
         L = st.number_input("Largo L (m)", value=6.0, min_value=0.1, key="rect_L")
         z = st.number_input("Profundidad z (m)", value=2.5, min_value=0.1, key="rect_z")
@@ -129,28 +129,37 @@ with tab2:
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], index=0, key="rect_pos")
         
         if st.button("Calcular", key="calc_rect"):
-            # Calculate m and n
+            # Cálculo de m y n
             m = B/z
             n = L/z
             
-            # Calculate influence factor Iz (exact Excel formula)
-            term1 = 2*m*n*math.sqrt(m**2 + n**2 + 1)
-            term2 = (m**2 + n**2 + m**2*n**2 + 1)*(m**2 + n**2 + 1)
-            term3 = math.atan2(2*m*n*math.sqrt(m**2 + n**2 + 1), (m**2 + n**2 - m**2*n**2 + 1))
+            # CÁLCULO EXACTO DEL FACTOR DE INFLUENCIA (FÓRMULA DEL EXCEL)
+            # Primera parte de la fórmula
+            part1_numerator = 2*m*n*math.sqrt(m**2 + n**2 + 1)
+            part1_denominator = (m**2 + n**2 + m**2*n**2 + 1)*(m**2 + n**2 + 1)
+            part1 = part1_numerator / part1_denominator
             
+            # Segunda parte de la fórmula (arcotangente)
+            numerator_atan = 2*m*n*math.sqrt(m**2 + n**2 + 1)
+            denominator_atan = m**2 + n**2 - m**2*n**2 + 1
+            part2 = math.atan2(numerator_atan, denominator_atan)
+            
+            # Condición especial del Excel
             if (m**2 + n**2 + 1) < (m**2 * n**2):
-                term3 += math.pi
+                part2 += math.pi
             
-            Iz = (1/(4*math.pi)) * (term1/term2 + term3)
+            # Cálculo final de Iz
+            Iz = (1/(4*math.pi)) * (part1 * ((m**2 + n**2 + 2)/(m**2 + n**2 + 1)) + part2)
             
+            # Ajuste para posición central
             if posicion == "Centro":
-                Iz *= 2  # For center: Is(center) = 2*Is(corner)
+                Iz *= 2  # Duplicar como indica la nota del Excel
             
-            # Calculate vertical stress Qz
+            # Cálculo del esfuerzo vertical
             Qz = q * Iz
             
             st.success(f"""
-            **RESULTADOS:**  
+            **RESULTADOS EXACTOS:**  
             • m = B/z = `{m:.4f}`  
             • n = L/z = `{n:.4f}`  
             • Iz = `{Iz:.6f}`  
@@ -159,54 +168,44 @@ with tab2:
     
     with col2:
         if 'calc_rect' in st.session_state:
-            # Prepare data for the graph
+            # Gráfico de variación con profundidad
             z_values = np.linspace(0.1, 3*max(B,L), 50)
             iz_values = []
-            qz_values = []
             
             for zi in z_values:
                 mi = B/zi
                 ni = L/zi
                 
-                # Calculate Iz for each depth
-                term1 = 2*mi*ni*math.sqrt(mi**2 + ni**2 + 1)
-                term2 = (mi**2 + ni**2 + mi**2*ni**2 + 1)*(mi**2 + ni**2 + 1)
-                term3 = math.atan2(2*mi*ni*math.sqrt(mi**2 + ni**2 + 1), (mi**2 + ni**2 - mi**2*ni**2 + 1))
+                # Aplicamos la misma fórmula exacta para cada profundidad
+                p1_num = 2*mi*ni*math.sqrt(mi**2 + ni**2 + 1)
+                p1_den = (mi**2 + ni**2 + mi**2*ni**2 + 1)*(mi**2 + ni**2 + 1)
+                p1 = p1_num / p1_den
+                
+                num_atan = 2*mi*ni*math.sqrt(mi**2 + ni**2 + 1)
+                den_atan = mi**2 + ni**2 - mi**2*ni**2 + 1
+                p2 = math.atan2(num_atan, den_atan)
                 
                 if (mi**2 + ni**2 + 1) < (mi**2 * ni**2):
-                    term3 += math.pi
+                    p2 += math.pi
                 
-                iz = (1/(4*math.pi)) * (term1/term2 + term3)
+                iz = (1/(4*math.pi)) * (p1 * ((mi**2 + ni**2 + 2)/(mi**2 + ni**2 + 1)) + p2)
                 
                 if posicion == "Centro":
                     iz *= 2
                 
                 iz_values.append(iz)
-                qz_values.append(q * iz)
             
-            # Create figure with two subplots
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
-            
-            # Plot Iz variation
-            ax1.plot(z_values, iz_values, 'b-')
-            ax1.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
-            ax1.set_title("Variación del Factor de Influencia (Iz) con Profundidad")
-            ax1.set_xlabel("Profundidad z (m)")
-            ax1.set_ylabel("Factor Iz")
-            ax1.legend()
-            ax1.grid(True)
-            
-            # Plot Qz variation
-            ax2.plot(z_values, qz_values, 'g-')
-            ax2.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
-            ax2.set_title("Variación del Esfuerzo Vertical (Qz) con Profundidad")
-            ax2.set_xlabel("Profundidad z (m)")
-            ax2.set_ylabel("Esfuerzo Qz (kPa)")
-            ax2.legend()
-            ax2.grid(True)
-            
-            plt.tight_layout()
+            fig, ax = plt.subplots(figsize=(8,5))
+            ax.plot(z_values, iz_values, 'b-')
+            ax.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
+            ax.set_title("Variación del Factor de Influencia (Iz) con Profundidad")
+            ax.set_xlabel("Profundidad z (m)")
+            ax.set_ylabel("Factor de Influencia Iz")
+            ax.legend()
+            ax.grid(True)
             st.pyplot(fig)
+
+
 # ========== PESTAÑA CARGA LINEAL ==========
 with tab4:
     st.header("Carga Lineal")
