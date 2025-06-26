@@ -121,74 +121,98 @@ with tab2:
     col1, col2 = st.columns(2)
     
     with col1:
-        B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
-        L = st.number_input("Largo L (m)", value=3.0, min_value=0.1, key="rect_L")
-        z = st.number_input("Profundidad z (m)", value=1.0, min_value=0.1, key="rect_z")
-        q = st.number_input("Carga q (kPa)", value=120.0, key="rect_q")
+        B = st.number_input("Ancho B (m)", value=5.0, min_value=0.1, key="rect_B")
+        L = st.number_input("Largo L (m)", value=10.0, min_value=0.1, key="rect_L")
+        z = st.number_input("Profundidad z (m)", value=3.0, min_value=0.1, key="rect_z")
+        q = st.number_input("Carga q (kPa)", value=150.0, key="rect_q")
+        posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], key="rect_pos")
         
         if st.button("Calcular", key="calc_rect"):
+            # Cálculos según las fórmulas del Excel
             m = B/z
             n = L/z
             
-            term1 = (2 * m * n * math.sqrt(1 + m**2 + n**2)) / ((1 + m**2 + n**2 + m**2 * n**2) * (1 + m**2 + n**2))
-            term2 = math.atan2((2 * m * n * math.sqrt(1 + m**2 + n**2)), (1 + m**2 + n**2 - m**2 * n**2))
-            Iz = (term1 + term2) / (2 * math.pi)
+            if posicion == "Esquina":
+                # Fórmula para esquina (Giroud, 1968)
+                term1 = math.log(m + math.sqrt(1 + m**2))
+                term2 = m * math.log((1 + math.sqrt(1 + m**2))/m)
+                Iz = (1/(2*math.pi)) * (term1 + term2)
+                
+                # Cálculo de asiento (solo para esquina)
+                E = 8000  # Valor por defecto como en el Excel
+                v = 0.5    # Valor por defecto como en el Excel
+                asiento = q * B * (1 - v**2) / E * Iz * 1000  # en mm
+                
+                formula_usada = r"$I_z = \frac{1}{2\pi}\left[\ln(m+\sqrt{1+m^2}) + m\ln\left(\frac{1+\sqrt{1+m^2}}{m}\right)\right]$"
+            else:
+                # Para centro (Is centro = 2*Is esquina)
+                Iz_esquina = (1/(2*math.pi)) * (math.log(m + math.sqrt(1 + m**2)) + m * math.log((1 + math.sqrt(1 + m**2))/m))
+                Iz = 2 * Iz_esquina
+                formula_usada = r"$I_z^{centro} = 2 \times I_z^{esquina}$"
+            
             sigma_z = q * Iz
             
             st.success(f"""
             **RESULTADOS:**  
-            • Relación m (B/z): `{m:.2f}`  
-            • Relación n (L/z): `{n:.2f}`  
-            • Factor de influencia (Iz): `{Iz:.4f}`  
-            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`
+            • Parámetros: m = B/z = {m:.2f}, n = L/z = {n:.2f}  
+            • Fórmula usada: {formula_usada}  
+            • Factor de influencia (Iz): `{Iz:.6f}`  
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
+            {f'• Asiento estimado: `{asiento:.2f} mm`' if posicion == "Esquina" else ''}
             """)
     
     with col2:
         if 'calc_rect' in st.session_state:
+            # Gráfico de variación con profundidad
             z_values = np.linspace(0.1, 3*max(B,L), 50)
             iz_values = []
+            
             for zi in z_values:
                 mi = B/zi
                 ni = L/zi
-                term1i = (2 * mi * ni * math.sqrt(1 + mi**2 + ni**2)) / ((1 + mi**2 + ni**2 + mi**2 * ni**2) * (1 + mi**2 + ni**2))
-                term2i = math.atan2((2 * mi * ni * math.sqrt(1 + mi**2 + ni**2)), (1 + mi**2 + ni**2 - mi**2 * ni**2))
-                iz_values.append((term1i + term2i) / (2 * math.pi))
+                if posicion == "Esquina":
+                    term1 = math.log(mi + math.sqrt(1 + mi**2))
+                    term2 = mi * math.log((1 + math.sqrt(1 + mi**2))/mi)
+                    iz = (1/(2*math.pi)) * (term1 + term2)
+                else:
+                    term1 = math.log(mi + math.sqrt(1 + mi**2))
+                    term2 = mi * math.log((1 + math.sqrt(1 + mi**2))/mi)
+                    iz = 2 * (1/(2*math.pi)) * (term1 + term2)
+                iz_values.append(iz)
             
-            plot_variation(z_values, iz_values, "Profundidad z (m)", "Factor de Influencia Iz", 
-                          "Variación del Factor con la Profundidad")
-
-# ========== PESTAÑA CARGA PUNTUAL ==========
-with tab3:
-    st.header("Carga Puntual")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        P = st.number_input("Carga P (kN)", value=1000.0, min_value=0.1, key="punt_P")
-        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="punt_z")
-        r = st.number_input("Distancia radial r (m)", value=1.0, min_value=0.0, key="punt_r")
-        
-        if st.button("Calcular", key="calc_punt"):
-            sigma_z = (3 * P * z**3) / (2 * math.pi * (r**2 + z**2)**2.5)
-            
-            st.success(f"""
-            **RESULTADOS:**  
-            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
-            • Relación r/z: `{r/z:.2f}`
-            """)
-    
-    with col2:
-        if 'calc_punt' in st.session_state:
-            ratios = np.linspace(0, 2, 50)
-            factores = (3 / (2 * math.pi)) / (ratios**2 + 1)**2.5
-            
-            fig, ax = plt.subplots()
-            ax.plot(ratios, factores, 'b-', linewidth=2)
-            ax.axvline(x=r/z, color='r', linestyle='--')
-            ax.set_title("Distribución de Esfuerzos (Boussinesq)")
-            ax.set_xlabel("Relación r/z")
-            ax.set_ylabel("σz / (P/z²)")
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.plot(z_values, iz_values, 'b-')
+            ax.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
+            ax.set_title(f"Variación del Factor de Influencia (Iz) con Profundidad\nPosición: {posicion}")
+            ax.set_xlabel("Profundidad z (m)")
+            ax.set_ylabel("Factor de Influencia Iz")
+            ax.legend()
             ax.grid(True)
             st.pyplot(fig)
+            
+            # Diagrama esquemático
+            fig2 = plt.figure(figsize=(8, 6))
+            ax2 = fig2.add_subplot(111)
+            
+            # Dibujar rectángulo
+            rect = plt.Rectangle((0, 0), B, L, color='r', fill=True, alpha=0.3, label='Área cargada')
+            ax2.add_patch(rect)
+            
+            # Marcar punto de cálculo
+            if posicion == "Esquina":
+                ax2.plot(0, 0, 'bo', markersize=10, label='Punto en esquina')
+            else:
+                ax2.plot(B/2, L/2, 'bo', markersize=10, label='Punto en centro')
+            
+            ax2.set_xlim(-0.5*B, 1.5*B)
+            ax2.set_ylim(-0.5*L, 1.5*L)
+            ax2.set_aspect('equal')
+            ax2.set_title("Esquema de Carga Rectangular")
+            ax2.set_xlabel("Ancho B (m)")
+            ax2.set_ylabel("Largo L (m)")
+            ax2.legend()
+            ax2.grid(True)
+            st.pyplot(fig2)
 
 # ========== PESTAÑA CARGA LINEAL ==========
 with tab4:
