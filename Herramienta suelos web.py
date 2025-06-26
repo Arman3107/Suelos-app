@@ -133,7 +133,7 @@ with tab2:
             m = B / z
             n = L / z
 
-            # Tabla extendida de Newmark con más valores para mayor precisión
+            # Tabla extendida de Newmark
             Bz_vals = np.array([0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4, 5, 10])
             Lz_vals = np.array([0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4, 5, 10])
             Iz_matrix = np.array([
@@ -149,15 +149,11 @@ with tab2:
                 [0.004, 0.019, 0.062, 0.093, 0.111, 0.122, 0.137, 0.145, 0.152, 0.162]
             ])
 
-            # Interpolación bilineal para mayor precisión
+            # Función de interpolación corregida
             def get_Iz(m_val, n_val):
-                # Encontrar los índices más cercanos
-                m_idx = np.searchsorted(Bz_vals, m_val) - 1
-                n_idx = np.searchsorted(Lz_vals, n_val) - 1
-                
-                # Asegurarse de no salirnos de los límites
-                m_idx = max(0, min(m_idx, len(Bz_vals)-2)
-                n_idx = max(0, min(n_idx, len(Lz_vals)-2)
+                # Encontrar los índices más cercanos (corregido)
+                m_idx = max(0, min(len(Bz_vals)-2, np.searchsorted(Bz_vals, m_val) - 1))
+                n_idx = max(0, min(len(Lz_vals)-2, np.searchsorted(Lz_vals, n_val) - 1))
                 
                 # Interpolación bilineal
                 x_ratio = (m_val - Bz_vals[m_idx]) / (Bz_vals[m_idx+1] - Bz_vals[m_idx])
@@ -214,7 +210,6 @@ with tab2:
             ax.legend()
             ax.grid(True)
             st.pyplot(fig)
-
 # ========== PESTAÑA CARGA LINEAL ==========
 with tab4:
     st.header("Carga Lineal")
