@@ -232,7 +232,7 @@ with tab5:
             plt.tight_layout()
             st.pyplot(fig)
 
-# ========== PESTAÑA ESFUERZOS ==========  
+ 
 # ========== PESTAÑA ESFUERZOS ========== 
 with tab6:
     st.header("Cálculo de Esfuerzos por Estratos")
@@ -273,45 +273,47 @@ with tab6:
     # Cálculo y resultados
     if st.button("📊 Calcular Esfuerzos", key="calc_esf"):
         profundidad_acum = 0
-        esfuerzo_total = 0
+        esfuerzo_total_kPa = 0  # Ahora explícitamente en kPa
         resultados = []
         
-        # Definir gamma_agua según la unidad seleccionada
-        gamma_agua = 9.81 if unidad_gamma == "kN/m³" else 1000
+        # Definir gamma_agua en kN/m³ (equivalente a kPa/m)
+        gamma_agua_kN = 9.81  # kN/m³ (igual a kPa/m)
         
         for estrato in st.session_state.estratos:
             espesor = estrato['espesor']
             gamma = estrato['gamma']
             
+            # Convertir a kN/m³ si la unidad era kg/m³
             if unidad_gamma == "kg/m³":
-                gamma /= 1000  # Conversión a kN/m³ para cálculos consistentes
+                gamma = gamma / 1000  # Conversión kg/m³ a kN/m³
             
-            # Cálculos
-            esfuerzo_total += gamma * espesor
+            # Cálculos (todos en kPa)
+            esfuerzo_total_kPa += gamma * espesor  # kN/m³ * m = kN/m² = kPa
             
             # Presión de poros (solo debajo del nivel freático)
             if profundidad_acum + espesor <= nf:
-                u = 0  # Arriba del nivel freático
+                u_kPa = 0  # Arriba del nivel freático
             else:
                 if profundidad_acum < nf:
                     # Estrato que cruza el nivel freático
-                    u = gamma_agua * (profundidad_acum + espesor - nf)
+                    u_kPa = gamma_agua_kN * (profundidad_acum + espesor - nf)
                 else:
                     # Completamente debajo del nivel freático
-                    u = gamma_agua * espesor
+                    u_kPa = gamma_agua_kN * espesor + (resultados[-1]['presion_poros'] if resultados else 0)
             
-            esfuerzo_efectivo = esfuerzo_total - u
+            esfuerzo_efectivo_kPa = esfuerzo_total_kPa - u_kPa
             
             resultados.append({
                 'profundidad': f"{profundidad_acum:.2f}-{profundidad_acum + espesor:.2f} m",
-                'esfuerzo_total': esfuerzo_total,
-                'presion_poros': u,
-                'esfuerzo_efectivo': esfuerzo_efectivo
+                'esfuerzo_total': esfuerzo_total_kPa,
+                'presion_poros': u_kPa,
+                'esfuerzo_efectivo': esfuerzo_efectivo_kPa
             })
             
             profundidad_acum += espesor
         
-        # Mostrar resultados en tabla
+        # Mostrar resultados en tabla (todos en kPa)
+        st.markdown("**Resultados en kPa (kN/m²):**")
         st.dataframe(
             resultados,
             column_config={
@@ -323,54 +325,53 @@ with tab6:
             hide_index=True
         )
         
-        # Gráfico de esfuerzos
+        # Gráfico de esfuerzos (todos en kPa)
         fig, ax = plt.subplots(figsize=(6, 8))
         profundidades = [0]
-        sigmas = [0]
-        u = [0]
-        sigma_eff = [0]
+        sigmas_kPa = [0]
+        u_kPa = [0]
+        sigma_eff_kPa = [0]
         
         current_depth = 0
-        sigma_total = 0
+        sigma_total_kPa = 0
         
         for estrato in st.session_state.estratos:
             gamma = estrato['gamma'] / 1000 if unidad_gamma == "kg/m³" else estrato['gamma']
             espesor = estrato['espesor']
             
-            # Actualizar esfuerzo total
-            sigma_total += gamma * espesor
+            # Actualizar esfuerzo total (en kPa)
+            sigma_total_kPa += gamma * espesor
             current_depth += espesor
             
-            # Calcular presión de poros
+            # Calcular presión de poros (en kPa)
             if current_depth <= nf:
-                presion_poros = 0
+                presion_poros_kPa = 0
             else:
                 if current_depth - espesor < nf:
                     # Estrato cruza el NF
-                    presion_poros = gamma_agua * (current_depth - nf)
+                    presion_poros_kPa = gamma_agua_kN * (current_depth - nf)
                 else:
                     # Todo el estrato bajo el NF
-                    presion_poros = gamma_agua * espesor + u[-1]
+                    presion_poros_kPa = gamma_agua_kN * espesor + u_kPa[-1]
             
-            esfuerzo_efectivo = sigma_total - presion_poros
+            esfuerzo_efectivo_kPa = sigma_total_kPa - presion_poros_kPa
             
             profundidades.append(current_depth)
-            sigmas.append(sigma_total)
-            u.append(presion_poros)
-            sigma_eff.append(esfuerzo_efectivo)
+            sigmas_kPa.append(sigma_total_kPa)
+            u_kPa.append(presion_poros_kPa)
+            sigma_eff_kPa.append(esfuerzo_efectivo_kPa)
         
-        ax.plot(sigmas, profundidades, 'r-', label='Esfuerzo Total')
-        ax.plot(u, profundidades, 'b-', label='Presión de Poros')
-        ax.plot(sigma_eff, profundidades, 'g--', label='Esfuerzo Efectivo')
+        ax.plot(sigmas_kPa, profundidades, 'r-', label='Esfuerzo Total (kPa)')
+        ax.plot(u_kPa, profundidades, 'b-', label='Presión de Poros (kPa)')
+        ax.plot(sigma_eff_kPa, profundidades, 'g--', label='Esfuerzo Efectivo (kPa)')
         
         ax.set_ylim(max(profundidades), 0)  # Invertir eje Y
         ax.set_xlabel("Esfuerzo (kPa)")
         ax.set_ylabel("Profundidad (m)")
         ax.legend()
         ax.grid(True)
-        ax.set_title("Distribución de Esfuerzos Verticales")
+        ax.set_title("Distribución de Esfuerzos Verticales (kPa)")
         st.pyplot(fig)
-        
 # ========== PESTAÑA CONSOLIDACIÓN ==========
 with tab7:
     st.header("Cálculo de Consolidación Primaria")
