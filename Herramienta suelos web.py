@@ -284,7 +284,7 @@ with tab6:
             gamma = estrato['gamma']
             
             if unidad_gamma == "kg/m³":
-                gamma /= 1000  # Conversión a kN/m³ para cálculos consistentes
+                gamma /= 0.001  # Conversión a kN/m³ para cálculos consistentes
             
             # Cálculos
             esfuerzo_total += gamma * espesor
