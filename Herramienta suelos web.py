@@ -116,7 +116,6 @@ with tab1:
             st.pyplot(fig2)
 
 # ========== PESTAÑA CARGA RECTANGULAR ==========
-w
 with tab2:
     st.header("Carga Rectangular")
     col1, col2 = st.columns(2)
@@ -154,56 +153,23 @@ with tab2:
 
     with col2:
         # Mostrar la imagen de referencia con los valores
-        st.image("image.png", caption="Valores de referencia para factor de influencia")
+        st.markdown("### Tabla de Factores de Influencia")
         
-        if 'calc_rect' in st.session_state:
-            # Gráfico de variación con profundidad (usando I0 constante)
-            z_values = np.linspace(0.1, 3 * max(B, L), 50)
-            qz_values = [q * (I0 * 2 if posicion == "Centro" else I0) for _ in z_values]
+        # Reemplaza 'ruta/a/tu/imagen.png' con la ruta correcta de tu imagen
+        try:
+            st.image("tabla_factores_influencia.png", 
+                    caption="Tabla de factores de influencia para carga rectangular",
+                    use_column_width=True)
+        except FileNotFoundError:
+            st.warning("Imagen de tabla de referencia no encontrada. Verifique la ruta del archivo.")
             
-            fig, ax = plt.subplots(figsize=(8, 5))
-            ax.plot(z_values, qz_values, 'b-')
-            ax.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
-            ax.set_title("Variación del Esfuerzo Vertical (Δσv) con Profundidad")
-            ax.set_xlabel("Profundidad z (m)")
-            ax.set_ylabel("Esfuerzo Vertical Δσv (kPa)")
-            ax.legend()
-            ax.grid(True)
-            st.pyplot(fig)
-# ========== PESTAÑA CARGA LINEAL ==
-
-with tab4:
-    st.header("Carga Lineal")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        q = st.number_input("Carga q (kN/m)", value=50.0, min_value=0.1, key="lin_q")
-        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="lin_z")
-        x = st.number_input("Distancia x (m)", value=1.0, key="lin_x")
-        
-        if st.button("Calcular", key="calc_lin"):
-            sigma_z = (2 * q * z**3) / (math.pi * (x**2 + z**2)**2)
-            
-            st.success(f"""
-            **RESULTADOS:**  
-            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
-            • Relación x/z: `{x/z:.2f}`
-            """)
-    
-    with col2:
-        if 'calc_lin' in st.session_state:
-            distancias = np.linspace(-3*z, 3*z, 100)
-            esfuerzos = [(2 * q * z**3) / (math.pi * (x**2 + z**2)**2) for x in distancias]
-            
-            fig, ax = plt.subplots()
-            ax.plot(distancias, esfuerzos, 'b-', linewidth=2)
-            ax.axvline(x=x, color='r', linestyle='--')
-            ax.set_title("Distribución de Esfuerzos (Carga Lineal)")
-            ax.set_xlabel("Distancia x (m)")
-            ax.set_ylabel("Esfuerzo σz (kPa)")
-            ax.grid(True)
-            st.pyplot(fig)
-
+        # Guía para usar la tabla
+        st.markdown("""
+        **Instrucciones:**
+        1. Calcule m = B/z y n = L/z
+        2. Busque en la tabla el factor I₀ correspondiente
+        3. Introduzca el valor manualmente arriba
+        """)
 # ========== PESTAÑA CARGA TRAPEZOIDAL ==========
 with tab5:
     st.header("Carga Rectangular (Banqueta)")
