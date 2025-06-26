@@ -121,36 +121,33 @@ with tab2:
     col1, col2 = st.columns(2)
     
     with col1:
-        # Inputs con valores que producen tus resultados esperados
-        B = st.number_input("Ancho B (m)", value=1.0, min_value=0.1, key="rect_B")
-        L = st.number_input("Largo L (m)", value=1.0, min_value=0.1, key="rect_L")
-        z = st.number_input("Profundidad z (m)", value=1.0, min_value=0.1, key="rect_z")
+        # Inputs con valores del Excel (B=2, L=6, z=2.5, q=35)
+        B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
+        L = st.number_input("Largo L (m)", value=6.0, min_value=0.1, key="rect_L")
+        z = st.number_input("Profundidad z (m)", value=2.5, min_value=0.1, key="rect_z")
         q = st.number_input("Carga q (kPa)", value=35.0, key="rect_q")
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], index=0, key="rect_pos")
         
         if st.button("Calcular", key="calc_rect"):
-            # Cálculo corregido (paréntesis balanceados)
+            # Cálculo exacto como en el Excel
             m = B/z
             n = L/z
             
-            # Fórmula exacta con paréntesis correctos
-            term1 = math.log((m*math.sqrt(m**2 + n**2 + 1))/(math.sqrt(m**2 + 1)*math.sqrt(n**2 + 1)))
-            term2 = m*math.log((math.sqrt(m**2 + n**2 + 1))/(math.sqrt(m**2 + 1)))
-            term3 = n*math.log((math.sqrt(m**2 + n**2 + 1))/(math.sqrt(n**2 + 1)))
-            Iz_esquina = (1/(2*math.pi))*(term1 + term2 + term3)
-            
-            if posicion == "Centro":
-                Iz = 2 * Iz_esquina
+            if posicion == "Esquina":
+                # Fórmula de Giroud (1968) exactamente como en el Excel
+                Iz = (1/math.pi)*(math.log(m + math.sqrt(1 + m**2)) + m*math.log((1 + math.sqrt(1 + m**2))/m))
             else:
-                Iz = Iz_esquina
+                # Para centro: Is(centro) = 2*Is(esquina) como en la nota del Excel
+                Iz_esquina = (1/math.pi)*(math.log(m + math.sqrt(1 + m**2)) + m*math.log((1 + math.sqrt(1 + m**2))/m))
+                Iz = 2 * Iz_esquina
             
             sigma_z = q * Iz
             
             st.success(f"""
-            **RESULTADOS VERIFICADOS:**  
+            **RESULTADOS (según Excel):**  
             • Relación m (B/z): `{m:.4f}`  
             • Relación n (L/z): `{n:.4f}`  
-            • Factor de influencia (Iz): `{Iz:.4f}`  
+            • Factor de influencia (Iz): `{Iz:.6f}`  
             • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
             """)
     
@@ -162,12 +159,12 @@ with tab2:
             
             for zi in z_values:
                 mi = B/zi
-                ni = L/zi
-                term1 = math.log((mi*math.sqrt(mi**2 + ni**2 + 1))/(math.sqrt(mi**2 + 1)*math.sqrt(ni**2 + 1)))
-                term2 = mi*math.log((math.sqrt(mi**2 + ni**2 + 1))/(math.sqrt(mi**2 + 1)))
-                term3 = ni*math.log((math.sqrt(mi**2 + ni**2 + 1))/(math.sqrt(ni**2 + 1)))
-                iz_esq = (1/(2*math.pi))*(term1 + term2 + term3)
-                iz_values.append(2*iz_esq if posicion=="Centro" else iz_esq)
+                if posicion == "Esquina":
+                    iz = (1/math.pi)*(math.log(mi + math.sqrt(1 + mi**2)) + mi*math.log((1 + math.sqrt(1 + mi**2))/mi))
+                else:
+                    iz_esq = (1/math.pi)*(math.log(mi + math.sqrt(1 + mi**2)) + mi*math.log((1 + math.sqrt(1 + mi**2))/mi))
+                    iz = 2 * iz_esq
+                iz_values.append(iz)
             
             fig, ax = plt.subplots(figsize=(8,5))
             ax.plot(z_values, iz_values, 'b-')
@@ -178,6 +175,27 @@ with tab2:
             ax.legend()
             ax.grid(True)
             st.pyplot(fig)
+            
+            # Diagrama esquemático
+            fig2 = plt.figure(figsize=(8,6))
+            ax2 = fig2.add_subplot(111)
+            rect = plt.Rectangle((0,0), B, L, color='red', alpha=0.3, label='Área cargada')
+            ax2.add_patch(rect)
+            
+            if posicion == "Esquina":
+                ax2.plot(0, 0, 'bo', markersize=10, label='Punto (esquina)')
+            else:
+                ax2.plot(B/2, L/2, 'bo', markersize=10, label='Punto (centro)')
+            
+            ax2.set_xlim(-1, B+1)
+            ax2.set_ylim(-1, L+1)
+            ax2.set_aspect('equal')
+            ax2.set_title("Esquema de la Cimentación")
+            ax2.set_xlabel("Ancho B (m)")
+            ax2.set_ylabel("Largo L (m)")
+            ax2.legend()
+            ax2.grid(True)
+            st.pyplot(fig2)
 # ========== PESTAÑA CARGA LINEAL ==========
 with tab4:
     st.header("Carga Lineal")
