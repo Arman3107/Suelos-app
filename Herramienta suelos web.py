@@ -361,7 +361,7 @@ with tab7:
         else:
             tv = 1.781 - 0.933 * math.log(1 - u/100)
         
-        t = tv * h**2 / cv
+        t = (tv * h**2 )/ cv
         
         # Conversión a unidades legibles
         if t < 60:
