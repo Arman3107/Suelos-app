@@ -152,89 +152,27 @@ with tab2:
             """)
 
     with col2:
-        # Mostrar la imagen de referencia con los valores
+        # Mostrar la imagen desde GitHub
         st.markdown("### Tabla de Factores de Influencia")
         
-        # Reemplaza 'ruta/a/tu/imagen.png' con la ruta correcta de tu imagen
+        # URL directa de la imagen en GitHub (usa el enlace raw)
+        image_url = "https://raw.githubusercontent.com/Arman3107/Suelos-app/main/Rectangulares.png"
+        
         try:
-            st.image("tabla_factores_influencia.png", 
-                    caption="Tabla de factores de influencia para carga rectangular",
-                    use_column_width=True)
-        except FileNotFoundError:
-            st.warning("Imagen de tabla de referencia no encontrada. Verifique la ruta del archivo.")
+            st.image(image_url,
+                   caption="Tabla de factores de influencia para carga rectangular",
+                   use_column_width=True)
+        except Exception as e:
+            st.error(f"Error al cargar la imagen: {str(e)}")
+            st.markdown(f"[Ver imagen directamente]({image_url})")
             
         # Guía para usar la tabla
         st.markdown("""
         **Instrucciones:**
         1. Calcule m = B/z y n = L/z
         2. Busque en la tabla el factor I₀ correspondiente
-        3. Introduzca el valor manualmente arriba
+        3. Introduzca el valor manualmente en el campo superior
         """)
-# ========== PESTAÑA CARGA TRAPEZOIDAL ==========
-with tab5:
-    st.header("Carga Rectangular (Banqueta)")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        a = st.number_input("Longitud a (m)", value=20.0, min_value=0.1, key="banq_a")
-        b = st.number_input("Ancho b (m)", value=5.0, min_value=0.1, key="banq_b")
-        z = st.number_input("Profundidad z (m)", value=10.0, min_value=0.1, key="banq_z")
-        q = st.number_input("Carga q (kPa)", value=200.0, min_value=0.1, key="banq_q")
-        
-        if st.button("Calcular", key="calc_banq"):
-            # Cálculos según las fórmulas del Excel
-            m = a / z
-            n = b / z
-            Iq = (1/np.pi) * (((m + n)/m) * np.arctan(m/(1 + n**2 + m*n)) + np.arctan(n))
-            sigma_z = Iq * q
-            
-            st.success(f"""
-            **RESULTADOS:**  
-            • Parámetro m: `{m:.4f}`  
-            • Parámetro n: `{n:.4f}`  
-            • Factor de influencia Iq: `{Iq:.6f}`  
-            • Incremento de tensión vertical (Δσ): `{sigma_z:.2f} kPa`
-            """)
-    
-    with col2:
-        if 'calc_banq' in st.session_state:
-            # Gráfico de la banqueta
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(111, projection='3d')
-            
-            # Crear coordenadas para la banqueta
-            x = np.linspace(0, a, 10)
-            y = np.linspace(0, b, 10)
-            X, Y = np.meshgrid(x, y)
-            Z = np.zeros_like(X)
-            
-            # Dibujar la banqueta
-            ax.plot_surface(X, Y, Z, color='r', alpha=0.5)
-            ax.set_title("Geometría de la Banqueta")
-            ax.set_xlabel("Longitud a (m)")
-            ax.set_ylabel("Ancho b (m)")
-            ax.set_zlabel("Profundidad (m)")
-            ax.view_init(elev=30, azim=45)
-            
-            st.pyplot(fig)
-            
-            # Gráfico de variación de Iq con z
-            z_vals = np.linspace(0.1, 2*z, 50)
-            m_vals = a / z_vals
-            n_vals = b / z_vals
-            Iq_vals = (1/np.pi) * (((m_vals + n_vals)/m_vals) * np.arctan(m_vals/(1 + n_vals**2 + m_vals*n_vals)) + np.arctan(n_vals))
-            
-            fig2, ax2 = plt.subplots(figsize=(8, 4))
-            ax2.plot(z_vals, Iq_vals, 'b-')
-            ax2.axvline(x=z, color='r', linestyle='--', label=f'z calculado ({z}m)')
-            ax2.set_title("Variación del Factor de Influencia con Profundidad")
-            ax2.set_xlabel("Profundidad z (m)")
-            ax2.set_ylabel("Factor de Influencia Iq")
-            ax2.legend()
-            ax2.grid(True)
-            
-            st.pyplot(fig2)
- 
 # ========== PESTAÑA ESFUERZOS ========== 
 with tab6:
     st.header("Cálculo de Esfuerzos por Estratos")
