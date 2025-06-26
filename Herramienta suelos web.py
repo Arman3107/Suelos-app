@@ -129,11 +129,11 @@ with tab2:
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], key="rect_pos")
         
         if st.button("Calcular", key="calc_rect"):
-            # Cálculo exacto como en el Excel
+            # Cálculo exacto como en el Excel (parte de tensiones)
             m = B/z
             n = L/z
             
-            # Factor de influencia para esquina (igual al Excel)
+            # Factor de influencia para esquina (fórmula completa de Newmark)
             term1 = math.log((m + math.sqrt(m**2 + 1)) * math.sqrt(n**2 + 1))
             term2 = m * math.log((math.sqrt(n**2 + 1) + math.sqrt(m**2 + n**2 + 1))/(math.sqrt(n**2 + 1) + 1))
             term3 = n * math.log((math.sqrt(m**2 + 1) + math.sqrt(m**2 + n**2 + 1))/(math.sqrt(m**2 + 1) + 1))
@@ -144,28 +144,16 @@ with tab2:
             else:
                 Iz = Iz_esquina
             
-            # Cálculo de esfuerzo vertical
+            # Cálculo de esfuerzo vertical (único resultado)
             sigma_z = q * Iz
             
-            # Cálculo de asientos (solo para esquina como en el Excel)
-            if posicion == "Esquina":
-                E = st.number_input("Módulo Elasticidad E (kPa)", value=8000.0, key="rect_E")
-                v = st.number_input("Coeficiente Poisson ν", value=0.5, min_value=0.0, max_value=0.5, step=0.01, key="rect_v")
-                asiento = q * B * (1 - v**2)/E * Iz_esquina * 1000  # en mm
-            
-            # Mostrar resultados
-            result_text = f"""
+            st.success(f"""
             **RESULTADOS:**  
             • Relación m (B/z): `{m:.2f}`  
             • Relación n (L/z): `{n:.2f}`  
             • Factor de influencia (Iz): `{Iz:.6f}`  
             • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
-            """
-            
-            if posicion == "Esquina":
-                result_text += f"• Asiento estimado: `{asiento:.2f} mm`"
-            
-            st.success(result_text)
+            """)
     
     with col2:
         if 'calc_rect' in st.session_state:
