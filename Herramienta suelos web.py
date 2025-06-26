@@ -49,27 +49,72 @@ with tab1:
         R = st.number_input("Radio R (m)", value=5.0, min_value=0.1, key="circ_R")
         z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="circ_z")
         q = st.number_input("Carga q (kPa)", value=100.0, key="circ_q")
-        E = st.number_input("Módulo Elasticidad E (kPa)", value=15000.0, key="circ_E")
-        v = st.number_input("Coeficiente Poisson ν", value=0.25, min_value=0.0, max_value=0.5, step=0.01, key="circ_v")
+        posicion = st.radio("Posición del punto:", ["Centro", "Fuera del centro"], key="circ_pos")
+        
+        if posicion == "Fuera del centro":
+            r = st.number_input("Distancia radial desde el centro (m)", value=1.0, min_value=0.0, key="circ_r")
         
         if st.button("Calcular", key="calc_circular"):
-            Iz = (1 - 1/((1 + (R/z)**2)**1.5))**2
-            sigma_z = q * Iz
-            asiento = (q * R * (1 - v**2)) / E * 1000
+            if posicion == "Centro":
+                # Fórmula para punto bajo el centro
+                Iz = 1 - (z**3 / (R**2 + z**2)**1.5
+                sigma_z = q * Iz
+                formula_used = r"$\sigma_z = q \left[1 - \frac{z^3}{(R^2 + z^2)^{3/2}}\right]$"
+            else:
+                # Fórmula para punto fuera del centro (usando factor de influencia aproximado)
+                m = z/R
+                n = r/R
+                Iz = (1 - (1 / (1 + (R/z)**2)**1.5) * (1 - (n / (1 + n**2))**0.5  # Aproximación
+                sigma_z = q * Iz
+                formula_used = r"$\sigma_z = q \cdot I_z$ (Factor de influencia)"
             
             st.success(f"""
             **RESULTADOS:**  
+            • Fórmula usada: {formula_used}  
             • Factor de influencia (Iz): `{Iz:.4f}`  
-            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
-            • Asentamiento estimado: `{asiento:.2f} mm`
+            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`
             """)
     
     with col2:
         if 'calc_circular' in st.session_state:
+            # Gráfico de variación con profundidad
             profundidades = np.linspace(0.1, 3*z, 50)
-            factores = [(1 - 1/((1 + (R/z)**2)**1.5))**2 for z in profundidades]
-            plot_variation(profundidades, factores, "Profundidad z (m)", "Factor de Influencia Iz", 
-                          "Variación del Factor con la Profundidad")
+            
+            if posicion == "Centro":
+                factores = [1 - (zi**3 / (R**2 + zi**2)**1.5) for zi in profundidades]
+            else:
+                factores = [(1 - (1 / (1 + (R/zi)**2)**1.5) * (1 - (r/R / (1 + (r/R)**2))**0.5) for zi in profundidades]
+            
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.plot(profundidades, factores, 'b-')
+            ax.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
+            ax.set_title("Variación del Factor de Influencia con Profundidad")
+            ax.set_xlabel("Profundidad z (m)")
+            ax.set_ylabel("Factor de Influencia Iz")
+            ax.legend()
+            ax.grid(True)
+            st.pyplot(fig)
+            
+            # Diagrama esquemático
+            fig2 = plt.figure(figsize=(8, 6))
+            ax2 = fig2.add_subplot(111)
+            circle = plt.Circle((0, 0), R, color='r', fill=True, alpha=0.3)
+            ax2.add_patch(circle)
+            
+            if posicion == "Centro":
+                ax2.plot(0, -z, 'bo', markersize=10, label='Punto de cálculo')
+            else:
+                ax2.plot(r, -z, 'bo', markersize=10, label='Punto de cálculo')
+            
+            ax2.set_xlim(-1.5*R, 1.5*R)
+            ax2.set_ylim(-3*z, 0.5*R)
+            ax2.set_aspect('equal')
+            ax2.set_title("Esquema de Carga Circular")
+            ax2.set_xlabel("Distancia radial (m)")
+            ax2.set_ylabel("Profundidad (m)")
+            ax2.legend()
+            ax2.grid(True)
+            st.pyplot(fig2)
 
 # ========== PESTAÑA CARGA RECTANGULAR ==========
 with tab2:
