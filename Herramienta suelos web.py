@@ -161,7 +161,7 @@ with tab2:
         try:
             st.image(image_url,
                    caption="Tabla de factores de influencia para carga rectangular",
-                   use_column_width=True)
+                   use_container_width=True)  # Cambio clave aquí
         except Exception as e:
             st.error(f"Error al cargar la imagen: {str(e)}")
             st.markdown(f"[Ver imagen directamente]({image_url})")
