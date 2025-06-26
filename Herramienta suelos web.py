@@ -171,7 +171,7 @@ with tab2:
             ax.grid(True)
             st.pyplot(fig)
 # ========== PESTAÑA CARGA LINEAL ==
-========
+
 with tab4:
     st.header("Carga Lineal")
     col1, col2 = st.columns(2)
