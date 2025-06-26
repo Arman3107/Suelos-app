@@ -233,6 +233,7 @@ with tab5:
             st.pyplot(fig)
 
 # ========== PESTAÑA ESFUERZOS ==========  
+# ========== PESTAÑA ESFUERZOS ========== 
 with tab6:
     st.header("Cálculo de Esfuerzos por Estratos")
     
@@ -275,25 +276,29 @@ with tab6:
         esfuerzo_total = 0
         resultados = []
         
+        # Definir gamma_agua según la unidad seleccionada
+        gamma_agua = 9.81 if unidad_gamma == "kN/m³" else 1000
+        
         for estrato in st.session_state.estratos:
             espesor = estrato['espesor']
             gamma = estrato['gamma']
             
             if unidad_gamma == "kg/m³":
-                gamma /= 1000  # Conversión a kN/m³
+                gamma /= 1000  # Conversión a kN/m³ para cálculos consistentes
             
             # Cálculos
             esfuerzo_total += gamma * espesor
+            
             # Presión de poros (solo debajo del nivel freático)
             if profundidad_acum + espesor <= nf:
                 u = 0  # Arriba del nivel freático
             else:
                 if profundidad_acum < nf:
                     # Estrato que cruza el nivel freático
-                    u = 9.81 * (profundidad_acum + espesor - nf)
+                    u = gamma_agua * (profundidad_acum + espesor - nf)
                 else:
                     # Completamente debajo del nivel freático
-                    u = 9.81 * espesor
+                    u = gamma_agua * espesor
             
             esfuerzo_efectivo = esfuerzo_total - u
             
@@ -342,10 +347,10 @@ with tab6:
             else:
                 if current_depth - espesor < nf:
                     # Estrato cruza el NF
-                    presion_poros = 9.81 * (current_depth - nf)
+                    presion_poros = gamma_agua * (current_depth - nf)
                 else:
                     # Todo el estrato bajo el NF
-                    presion_poros = 9.81 * espesor + u[-1]
+                    presion_poros = gamma_agua * espesor + u[-1]
             
             esfuerzo_efectivo = sigma_total - presion_poros
             
@@ -365,6 +370,7 @@ with tab6:
         ax.grid(True)
         ax.set_title("Distribución de Esfuerzos Verticales")
         st.pyplot(fig)
+        
 # ========== PESTAÑA CONSOLIDACIÓN ==========
 with tab7:
     st.header("Cálculo de Consolidación Primaria")
