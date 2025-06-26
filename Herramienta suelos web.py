@@ -116,101 +116,62 @@ with tab1:
             st.pyplot(fig2)
 
 # ========== PESTAÑA CARGA RECTANGULAR ==========
+w
 with tab2:
     st.header("Carga Rectangular")
     col1, col2 = st.columns(2)
 
     with col1:
-        # Inputs con valores del Excel
+        # Inputs de geometría y carga
         B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
         L = st.number_input("Largo L (m)", value=6.0, min_value=0.1, key="rect_L")
         z = st.number_input("Profundidad z (m)", value=2.5, min_value=0.1, key="rect_z")
         q = st.number_input("Carga q (kPa)", value=35.0, key="rect_q")
+        
+        # Selector de posición y factor manual
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], index=0, key="rect_pos")
-
+        I0 = st.number_input("Factor de influencia I₀ (de tablas)", value=0.12, min_value=0.0, max_value=1.0, step=0.01, key="rect_I0")
+        
         if st.button("Calcular", key="calc_rect"):
             # Cálculo de relaciones m y n
             m = B / z
             n = L / z
-
-            # Tabla extendida de Newmark
-            Bz_vals = np.array([0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4, 5, 10])
-            Lz_vals = np.array([0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4, 5, 10])
-            Iz_matrix = np.array([
-                [0.000, 0.000, 0.001, 0.002, 0.003, 0.003, 0.004, 0.004, 0.004, 0.004],
-                [0.000, 0.001, 0.005, 0.010, 0.013, 0.015, 0.017, 0.018, 0.018, 0.019],
-                [0.001, 0.005, 0.024, 0.040, 0.048, 0.052, 0.058, 0.060, 0.061, 0.062],
-                [0.002, 0.010, 0.040, 0.061, 0.073, 0.080, 0.087, 0.090, 0.091, 0.093],
-                [0.003, 0.013, 0.048, 0.073, 0.087, 0.095, 0.104, 0.108, 0.109, 0.111],
-                [0.003, 0.015, 0.052, 0.080, 0.095, 0.104, 0.113, 0.118, 0.120, 0.122],
-                [0.004, 0.017, 0.058, 0.087, 0.104, 0.113, 0.125, 0.131, 0.134, 0.137],
-                [0.004, 0.018, 0.060, 0.090, 0.108, 0.118, 0.131, 0.137, 0.141, 0.145],
-                [0.004, 0.018, 0.061, 0.091, 0.109, 0.120, 0.134, 0.141, 0.146, 0.152],
-                [0.004, 0.019, 0.062, 0.093, 0.111, 0.122, 0.137, 0.145, 0.152, 0.162]
-            ])
-
-            # Función de interpolación corregida
-            def get_Iz(m_val, n_val):
-                # Encontrar los índices más cercanos (corregido)
-                m_idx = max(0, min(len(Bz_vals)-2, np.searchsorted(Bz_vals, m_val) - 1))
-                n_idx = max(0, min(len(Lz_vals)-2, np.searchsorted(Lz_vals, n_val) - 1))
-                
-                # Interpolación bilineal
-                x_ratio = (m_val - Bz_vals[m_idx]) / (Bz_vals[m_idx+1] - Bz_vals[m_idx])
-                y_ratio = (n_val - Lz_vals[n_idx]) / (Lz_vals[n_idx+1] - Lz_vals[n_idx])
-                
-                # Valores de las esquinas
-                a = Iz_matrix[m_idx][n_idx]
-                b = Iz_matrix[m_idx][n_idx+1]
-                c = Iz_matrix[m_idx+1][n_idx]
-                d = Iz_matrix[m_idx+1][n_idx+1]
-                
-                # Interpolación
-                return (1-x_ratio)*(1-y_ratio)*a + (1-x_ratio)*y_ratio*b + x_ratio*(1-y_ratio)*c + x_ratio*y_ratio*d
-
-            Iz = get_Iz(m, n)
-
-            # Ajuste para posición central
-            if posicion == "Centro":
-                Iz *= 2  # Duplicar como indica la nota del Excel
-
+            
+            # Ajuste para posición central (duplicar I0 si es centro)
+            Iz = I0 * 2 if posicion == "Centro" else I0
+            
             # Cálculo del esfuerzo vertical
             Qz = q * Iz
 
             st.success(f"""
-            **RESULTADOS (TABLAS DE NEWMARK):**  
+            **RESULTADOS:**  
             • m = B/z = `{m:.4f}`  
             • n = L/z = `{n:.4f}`  
-            • Iz = `{Iz:.6f}`  
-            • Qz = `{Qz:.2f} kPa`  
+            • I₀ utilizado = `{I0:.4f}`  
+            • Iₛ efectivo = `{Iz:.4f}`  
+            • Δσv = Qz = `{Qz:.2f} kPa`  
             """)
 
     with col2:
+        # Mostrar la imagen de referencia con los valores
+        st.image("image.png", caption="Valores de referencia para factor de influencia")
+        
         if 'calc_rect' in st.session_state:
-            # Preparación del gráfico
+            # Gráfico de variación con profundidad (usando I0 constante)
             z_values = np.linspace(0.1, 3 * max(B, L), 50)
-            iz_values = []
+            qz_values = [q * (I0 * 2 if posicion == "Centro" else I0) for _ in z_values]
             
-            for zi in z_values:
-                mi = B / zi
-                ni = L / zi
-                iz = get_Iz(mi, ni)
-                
-                if posicion == "Centro":
-                    iz *= 2
-                
-                iz_values.append(iz)
-
             fig, ax = plt.subplots(figsize=(8, 5))
-            ax.plot(z_values, iz_values, 'b-')
+            ax.plot(z_values, qz_values, 'b-')
             ax.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
-            ax.set_title("Variación del Factor de Influencia (Iz) con Profundidad")
+            ax.set_title("Variación del Esfuerzo Vertical (Δσv) con Profundidad")
             ax.set_xlabel("Profundidad z (m)")
-            ax.set_ylabel("Factor de Influencia Iz")
+            ax.set_ylabel("Esfuerzo Vertical Δσv (kPa)")
             ax.legend()
             ax.grid(True)
             st.pyplot(fig)
-# ========== PESTAÑA CARGA LINEAL ==========
+# ========== PESTAÑA CARGA LINEAL ==
+========
 with tab4:
     st.header("Carga Lineal")
     col1, col2 = st.columns(2)
