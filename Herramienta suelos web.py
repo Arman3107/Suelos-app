@@ -121,6 +121,7 @@ with tab2:
     col1, col2 = st.columns(2)
     
     with col1:
+        # Inputs con valores por defecto del Excel
         B = st.number_input("Ancho B (m)", value=5.0, min_value=0.1, key="rect_B")
         L = st.number_input("Largo L (m)", value=10.0, min_value=0.1, key="rect_L")
         z = st.number_input("Profundidad z (m)", value=3.0, min_value=0.1, key="rect_z")
@@ -128,29 +129,35 @@ with tab2:
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], key="rect_pos")
         
         if st.button("Calcular", key="calc_rect"):
-            # Cálculo de m y n como en el Excel
+            # Cálculo exacto como en el Excel
             m = B/z
             n = L/z
             
-            # Cálculo exacto como en el Excel (para esquina)
-            term1 = math.log(m + math.sqrt(1 + m**2))
-            term2 = m * math.log((1 + math.sqrt(1 + m**2))/m)
-            Iz_esquina = (1/math.pi) * (term1 + term2)
+            # Factor de influencia para esquina (igual al Excel)
+            term1 = math.log((m + math.sqrt(m**2 + 1)) * math.sqrt(n**2 + 1))
+            term2 = m * math.log((math.sqrt(n**2 + 1) + math.sqrt(m**2 + n**2 + 1))/(math.sqrt(n**2 + 1) + 1))
+            term3 = n * math.log((math.sqrt(m**2 + 1) + math.sqrt(m**2 + n**2 + 1))/(math.sqrt(m**2 + 1) + 1))
+            Iz_esquina = (term1 + term2 + term3)/(2*math.pi)
             
-            if posicion == "Esquina":
-                Iz = Iz_esquina
-                # Cálculo de asiento (como en el Excel)
-                E = 8000  # Valor default como en el Excel
-                v = 0.5   # Valor default como en el Excel
-                asiento = q * B * (1 - v**2)/E * Iz_esquina * 1000  # en mm
+            if posicion == "Centro":
+                Iz = 2 * Iz_esquina  # Como indica la nota en el Excel
             else:
-                Iz = 2 * Iz_esquina  # Para centro (como indica la nota en el Excel)
-                
+                Iz = Iz_esquina
+            
+            # Cálculo de esfuerzo vertical
             sigma_z = q * Iz
             
-            # Resultados limpios
+            # Cálculo de asientos (solo para esquina como en el Excel)
+            if posicion == "Esquina":
+                E = st.number_input("Módulo Elasticidad E (kPa)", value=8000.0, key="rect_E")
+                v = st.number_input("Coeficiente Poisson ν", value=0.5, min_value=0.0, max_value=0.5, step=0.01, key="rect_v")
+                asiento = q * B * (1 - v**2)/E * Iz_esquina * 1000  # en mm
+            
+            # Mostrar resultados
             result_text = f"""
             **RESULTADOS:**  
+            • Relación m (B/z): `{m:.2f}`  
+            • Relación n (L/z): `{n:.2f}`  
             • Factor de influencia (Iz): `{Iz:.6f}`  
             • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`  
             """
@@ -168,15 +175,17 @@ with tab2:
             
             for zi in z_values:
                 mi = B/zi
-                term1 = math.log(mi + math.sqrt(1 + mi**2))
-                term2 = mi * math.log((1 + math.sqrt(1 + mi**2))/mi)
-                iz_esq = (1/math.pi) * (term1 + term2)
+                ni = L/zi
+                term1 = math.log((mi + math.sqrt(mi**2 + 1)) * math.sqrt(ni**2 + 1))
+                term2 = mi * math.log((math.sqrt(ni**2 + 1) + math.sqrt(mi**2 + ni**2 + 1))/(math.sqrt(ni**2 + 1) + 1))
+                term3 = ni * math.log((math.sqrt(mi**2 + 1) + math.sqrt(mi**2 + ni**2 + 1))/(math.sqrt(mi**2 + 1) + 1))
+                iz_esq = (term1 + term2 + term3)/(2*math.pi)
                 iz_values.append(2*iz_esq if posicion=="Centro" else iz_esq)
             
             fig, ax = plt.subplots(figsize=(8,5))
             ax.plot(z_values, iz_values, 'b-')
             ax.axvline(x=z, color='r', linestyle='--', label=f'Profundidad calculada ({z}m)')
-            ax.set_title(f"Variación del Factor de Influencia con Profundidad")
+            ax.set_title(f"Variación del Factor de Influencia (Iz)")
             ax.set_xlabel("Profundidad z (m)")
             ax.set_ylabel("Factor Iz")
             ax.legend()
@@ -184,7 +193,8 @@ with tab2:
             st.pyplot(fig)
             
             # Esquema de la cimentación
-            fig2, ax2 = plt.subplots(figsize=(8,6))
+            fig2 = plt.figure(figsize=(8,6))
+            ax2 = fig2.add_subplot(111)
             rect = plt.Rectangle((0,0), B, L, color='red', alpha=0.3, label='Área cargada')
             ax2.add_patch(rect)
             
