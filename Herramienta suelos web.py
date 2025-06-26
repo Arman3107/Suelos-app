@@ -181,57 +181,68 @@ with tab4:
 
 # ========== PESTAÑA CARGA TRAPEZOIDAL ==========
 with tab5:
-    st.header("Carga Trapezoidal")
+    st.header("Carga Rectangular (Banqueta)")
     col1, col2 = st.columns(2)
     
     with col1:
-        q1 = st.number_input("Carga q1 (kPa)", value=100.0, min_value=0.1, key="trap_q1")
-        q2 = st.number_input("Carga q2 (kPa)", value=150.0, min_value=0.1, key="trap_q2")
-        B = st.number_input("Ancho B (m)", value=3.0, min_value=0.1, key="trap_B")
-        z = st.number_input("Profundidad z (m)", value=2.0, min_value=0.1, key="trap_z")
-        x = st.number_input("Distancia x (m)", value=1.5, key="trap_x")
+        a = st.number_input("Longitud a (m)", value=20.0, min_value=0.1, key="banq_a")
+        b = st.number_input("Ancho b (m)", value=5.0, min_value=0.1, key="banq_b")
+        z = st.number_input("Profundidad z (m)", value=10.0, min_value=0.1, key="banq_z")
+        q = st.number_input("Carga q (kPa)", value=200.0, min_value=0.1, key="banq_q")
         
-        if st.button("Calcular", key="calc_trap"):
-            # Solución aproximada para carga trapezoidal
-            q_avg = (q1 + q2) / 2
-            sigma_z = q_avg * (1 - 1/(1 + (B/z)**2))
+        if st.button("Calcular", key="calc_banq"):
+            # Cálculos según las fórmulas del Excel
+            m = a / z
+            n = b / z
+            Iq = (1/np.pi) * (((m + n)/m) * np.arctan(m/(1 + n**2 + m*n)) + np.arctan(n))
+            sigma_z = Iq * q
             
             st.success(f"""
-            **RESULTADOS (aproximados):**  
-            • Carga promedio: `{q_avg:.2f} kPa`  
-            • Esfuerzo vertical (σz): `{sigma_z:.2f} kPa`
+            **RESULTADOS:**  
+            • Parámetro m: `{m:.4f}`  
+            • Parámetro n: `{n:.4f}`  
+            • Factor de influencia Iq: `{Iq:.6f}`  
+            • Incremento de tensión vertical (Δσ): `{sigma_z:.2f} kPa`
             """)
     
     with col2:
-        if 'calc_trap' in st.session_state:
-            x_vals = np.linspace(-2*B, 2*B, 100)
-            z_vals = []
-            for xi in x_vals:
-                if -B/2 <= xi <= B/2:
-                    q = q1 + (q2 - q1) * (xi + B/2)/B
-                else:
-                    q = 0
-                z_vals.append(q * (1 - 1/(1 + (B/z)**2)))
+        if 'calc_banq' in st.session_state:
+            # Gráfico de la banqueta
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111, projection='3d')
             
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+            # Crear coordenadas para la banqueta
+            x = np.linspace(0, a, 10)
+            y = np.linspace(0, b, 10)
+            X, Y = np.meshgrid(x, y)
+            Z = np.zeros_like(X)
             
-            # Gráfico superior: Distribución de carga
-            ax1.plot(x_vals, [q1 + (q2 - q1) * (xi + B/2)/B if -B/2 <= xi <= B/2 else 0 for xi in x_vals], 'r-')
-            ax1.set_title("Distribución de Carga Trapezoidal")
-            ax1.set_xlabel("Distancia x (m)")
-            ax1.set_ylabel("Carga q (kPa)")
-            ax1.grid(True)
+            # Dibujar la banqueta
+            ax.plot_surface(X, Y, Z, color='r', alpha=0.5)
+            ax.set_title("Geometría de la Banqueta")
+            ax.set_xlabel("Longitud a (m)")
+            ax.set_ylabel("Ancho b (m)")
+            ax.set_zlabel("Profundidad (m)")
+            ax.view_init(elev=30, azim=45)
             
-            # Gráfico inferior: Distribución de esfuerzos
-            ax2.plot(x_vals, z_vals, 'b-')
-            ax2.set_title("Distribución de Esfuerzos Verticales")
-            ax2.set_xlabel("Distancia x (m)")
-            ax2.set_ylabel("Esfuerzo σz (kPa)")
+            st.pyplot(fig)
+            
+            # Gráfico de variación de Iq con z
+            z_vals = np.linspace(0.1, 2*z, 50)
+            m_vals = a / z_vals
+            n_vals = b / z_vals
+            Iq_vals = (1/np.pi) * (((m_vals + n_vals)/m_vals) * np.arctan(m_vals/(1 + n_vals**2 + m_vals*n_vals)) + np.arctan(n_vals))
+            
+            fig2, ax2 = plt.subplots(figsize=(8, 4))
+            ax2.plot(z_vals, Iq_vals, 'b-')
+            ax2.axvline(x=z, color='r', linestyle='--', label=f'z calculado ({z}m)')
+            ax2.set_title("Variación del Factor de Influencia con Profundidad")
+            ax2.set_xlabel("Profundidad z (m)")
+            ax2.set_ylabel("Factor de Influencia Iq")
+            ax2.legend()
             ax2.grid(True)
             
-            plt.tight_layout()
-            st.pyplot(fig)
-
+            st.pyplot(fig2)
  
 # ========== PESTAÑA ESFUERZOS ========== 
 with tab6:
