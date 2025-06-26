@@ -119,76 +119,61 @@ with tab1:
 with tab2:
     st.header("Carga Rectangular")
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        # Inputs con valores del Excel
+        # Inputs
         B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
         L = st.number_input("Largo L (m)", value=6.0, min_value=0.1, key="rect_L")
         z = st.number_input("Profundidad z (m)", value=2.5, min_value=0.1, key="rect_z")
         q = st.number_input("Carga q (kPa)", value=35.0, key="rect_q")
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], index=0, key="rect_pos")
-        
+
         if st.button("Calcular", key="calc_rect"):
-            # Cálculo de m y n
+            # Cálculo de relaciones
             m = B / z
             n = L / z
 
-            # Parte común
-            sqrt_expr = math.sqrt(m**2 + n**2 + 1)
-            denom_common = m**2 + n**2 + 1
+            # Tabla base de Newmark (Iz)
+            Bz_vals = np.array([1, 2, 3, 4, 5])
+            Lz_vals = np.array([1, 2, 3, 4, 5])
+            Iz_matrix = np.array([
+                [0.026, 0.043, 0.054, 0.061, 0.065],
+                [0.043, 0.073, 0.091, 0.102, 0.109],
+                [0.054, 0.091, 0.113, 0.127, 0.135],
+                [0.061, 0.102, 0.127, 0.143, 0.152],
+                [0.065, 0.109, 0.135, 0.152, 0.162],
+            ])
 
-            # Parte 1
-            part1_numerator = 2 * m * n * sqrt_expr
-            part1_denominator = (m**2 + n**2 + m**2 * n**2 + 1) * denom_common
-            part1 = part1_numerator / part1_denominator
-
-            # Parte 2 (arcotangente)
-            numerator_atan = 2 * m * n * sqrt_expr
-            denominator_atan = m**2 + n**2 - m**2 * n**2 + 1
-            part2 = math.atan2(numerator_atan, denominator_atan)
-
-            # Factor de influencia Iz
-            Iz = (1 / (4 * math.pi)) * (part1 * ((m**2 + n**2 + 2) / denom_common) + part2)
+            # Interpolación
+            from scipy.interpolate import interp2d
+            interpolador = interp2d(Lz_vals, Bz_vals, Iz_matrix, kind='linear')
+            Iz = float(interpolador(n, m))
 
             # Ajuste para centro
             if posicion == "Centro":
                 Iz *= 2
 
-            # Esfuerzo vertical
+            # Esfuerzo
             Qz = q * Iz
 
             st.success(f"""
-            **RESULTADOS EXACTOS:**  
+            **RESULTADOS NEWMARK (Tabla):**  
             • m = B/z = `{m:.4f}`  
             • n = L/z = `{n:.4f}`  
-            • Iz = `{Iz:.6f}`  
+            • Iz ≈ `{Iz:.6f}`  
             • Qz = `{Qz:.2f} kPa`  
             """)
     
     with col2:
         if 'calc_rect' in st.session_state:
-            # Gráfico de variación con profundidad
+            # Gráfico con profundidad
             z_values = np.linspace(0.1, 3 * max(B, L), 50)
             iz_values = []
 
             for zi in z_values:
                 mi = B / zi
                 ni = L / zi
-                sqrt_expr = math.sqrt(mi**2 + ni**2 + 1)
-                denom_common = mi**2 + ni**2 + 1
-
-                # Parte 1
-                p1_num = 2 * mi * ni * sqrt_expr
-                p1_den = (mi**2 + ni**2 + mi**2 * ni**2 + 1) * denom_common
-                p1 = p1_num / p1_den
-
-                # Parte 2
-                num_atan = 2 * mi * ni * sqrt_expr
-                den_atan = mi**2 + ni**2 - mi**2 * ni**2 + 1
-                p2 = math.atan2(num_atan, den_atan)
-
-                # Iz
-                iz = (1 / (4 * math.pi)) * (p1 * ((mi**2 + ni**2 + 2) / denom_common) + p2)
+                iz = float(interpolador(ni, mi))
 
                 if posicion == "Centro":
                     iz *= 2
@@ -204,7 +189,6 @@ with tab2:
             ax.legend()
             ax.grid(True)
             st.pyplot(fig)
-
 
 
 # ========== PESTAÑA CARGA LINEAL ==========
