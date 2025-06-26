@@ -121,7 +121,7 @@ with tab2:
     col1, col2 = st.columns(2)
 
     with col1:
-        # Inputs
+        # Inputs de usuario
         B = st.number_input("Ancho B (m)", value=2.0, min_value=0.1, key="rect_B")
         L = st.number_input("Largo L (m)", value=6.0, min_value=0.1, key="rect_L")
         z = st.number_input("Profundidad z (m)", value=2.5, min_value=0.1, key="rect_z")
@@ -129,11 +129,11 @@ with tab2:
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], index=0, key="rect_pos")
 
         if st.button("Calcular", key="calc_rect"):
-            # Cálculo de relaciones
+            # Relación m y n
             m = B / z
             n = L / z
 
-            # Tabla base de Newmark (Iz)
+            # Tabla de influencia de Newmark
             Bz_vals = np.array([1, 2, 3, 4, 5])
             Lz_vals = np.array([1, 2, 3, 4, 5])
             Iz_matrix = np.array([
@@ -144,29 +144,39 @@ with tab2:
                 [0.065, 0.109, 0.135, 0.152, 0.162],
             ])
 
-            # Interpolación
             from scipy.interpolate import interp2d
             interpolador = interp2d(Lz_vals, Bz_vals, Iz_matrix, kind='linear')
             Iz = float(interpolador(n, m))
 
-            # Ajuste para centro
+            # Ajuste si está en el centro
             if posicion == "Centro":
                 Iz *= 2
 
-            # Esfuerzo
             Qz = q * Iz
 
             st.success(f"""
-            **RESULTADOS NEWMARK (Tabla):**  
+            **RESULTADOS MÉTODO NEWMARK (Tabla):**  
             • m = B/z = `{m:.4f}`  
             • n = L/z = `{n:.4f}`  
             • Iz ≈ `{Iz:.6f}`  
             • Qz = `{Qz:.2f} kPa`  
             """)
-    
+
     with col2:
         if 'calc_rect' in st.session_state:
-            # Gráfico con profundidad
+            # Redefinimos tabla e interpolador para evitar error
+            Bz_vals = np.array([1, 2, 3, 4, 5])
+            Lz_vals = np.array([1, 2, 3, 4, 5])
+            Iz_matrix = np.array([
+                [0.026, 0.043, 0.054, 0.061, 0.065],
+                [0.043, 0.073, 0.091, 0.102, 0.109],
+                [0.054, 0.091, 0.113, 0.127, 0.135],
+                [0.061, 0.102, 0.127, 0.143, 0.152],
+                [0.065, 0.109, 0.135, 0.152, 0.162],
+            ])
+            interpolador = interp2d(Lz_vals, Bz_vals, Iz_matrix, kind='linear')
+
+            # Preparación del gráfico
             z_values = np.linspace(0.1, 3 * max(B, L), 50)
             iz_values = []
 
