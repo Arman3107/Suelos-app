@@ -122,21 +122,21 @@ with tab2:
     
     with col1:
         # Inputs con valores que producen tus resultados esperados
-        B = st.number_input("Ancho B (m)", value=1.0, min_value=0.1, key="rect_B")  # Cambiado a 1m
-        L = st.number_input("Largo L (m)", value=1.0, min_value=0.1, key="rect_L")  # Cambiado a 1m
-        z = st.number_input("Profundidad z (m)", value=1.0, min_value=0.1, key="rect_z")  # Cambiado a 1m
-        q = st.number_input("Carga q (kPa)", value=35.0, key="rect_q")  # Cambiado a 35 kPa
+        B = st.number_input("Ancho B (m)", value=1.0, min_value=0.1, key="rect_B")
+        L = st.number_input("Largo L (m)", value=1.0, min_value=0.1, key="rect_L")
+        z = st.number_input("Profundidad z (m)", value=1.0, min_value=0.1, key="rect_z")
+        q = st.number_input("Carga q (kPa)", value=35.0, key="rect_q")
         posicion = st.radio("Posición del punto:", ["Esquina", "Centro"], index=0, key="rect_pos")
         
         if st.button("Calcular", key="calc_rect"):
-            # Cálculo corregido para producir 0.1829
+            # Cálculo corregido (paréntesis balanceados)
             m = B/z
             n = L/z
             
-            # Fórmula exacta que produce 0.1829 para B=L=z=1
+            # Fórmula exacta con paréntesis correctos
             term1 = math.log((m*math.sqrt(m**2 + n**2 + 1))/(math.sqrt(m**2 + 1)*math.sqrt(n**2 + 1)))
             term2 = m*math.log((math.sqrt(m**2 + n**2 + 1))/(math.sqrt(m**2 + 1)))
-            term3 = n*math.log((math.sqrt(m**2 + n**2 + 1))/(math.sqrt(n**2 + 1))))
+            term3 = n*math.log((math.sqrt(m**2 + n**2 + 1))/(math.sqrt(n**2 + 1)))
             Iz_esquina = (1/(2*math.pi))*(term1 + term2 + term3)
             
             if posicion == "Centro":
